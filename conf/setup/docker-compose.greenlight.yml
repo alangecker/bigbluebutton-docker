@@ -1,6 +1,3 @@
-version: '3.6'
-
-services:
   greenlight:
     container_name: greenlight
     image: bigbluebutton/greenlight:v2

@@ -13,44 +13,81 @@ fi
 # load .env
 if [ -f .env ]
 then
-  echo "Error: the configuration file .env already exists."
-  echo "either edit variables manually in there or remove the file and try this script again"
-  exit 1
+  # exclude WELCOME_MESSAGE && WELCOME_FOOTER because it may contain invalid characters
+  export $(cat .env | sed 's/#.*//g' | grep -v "WELCOME_FOOTER" | grep -v "WELCOME_MESSAGE" | xargs)
 fi
 
+ask_question () {
+    local question=$1
+    local current_value=$2
+    local default_value=$3
 
-EXTERNAL_IP=$(curl -s http://whatismyip.akamai.com)
+    if [ "$current_value" == true ]; then
+        question="${question} [${default_value}]: "
+    else
+        question="${question}: "
+    fi
 
-greenlight=""
-while [[ ! $greenlight =~ ^(y|n)$ ]]; do
-    read -p "Should greenlight be included? (y/n): " greenlight
-done
+    return_value=""
+    while [[ ! $return_value =~ ^(y|n)$ ]]; do
+        read -p "$question" return_value
+        if [ "$current_value" == true ] && [ "$return_value" == "" ]; then
+            return_value="${default_value}"
+        fi
+    done
+}
 
-https_proxy=""
-while [[ ! $https_proxy =~ ^(y|n)$ ]]; do
-    read -p "Should an automatic HTTPS Proxy be included? (y/n): " https_proxy
-done
+ask_question "Should Greenlight frontend be included? (y/n)" $ENABLE_GREENLIGHT "y"
+greenlight=$return_value
 
-coturn=""
+ask_question "Should an automatic HTTPS Proxy be included? (y/n)" $ENABLE_HTTPS_PROXY "y"
+https_proxy=$return_value
+
+ask_question "Should a Demo be included? (y/n)" $ENABLE_DEMO "y"
+demo=$return_value
+
+ask_question "Should the WebHooks API be included? (y/n)" $ENABLE_WEBHOOKS "y"
+webhooks=$return_value
+
 if [ "$https_proxy" == "y" ]
 then
-    while [[ ! $coturn =~ ^(y|n)$ ]]; do
-        read -p "Should a coturn be included? (y/n): " coturn
-    done
+    ask_question "Should a coturn server be included? (y/n)" $ENABLE_COTURN "y"
+    coturn=$return_value
+else
+    coturn="n"
 fi
 
-DOMAIN=""
-while [[ -z "$DOMAIN" ]]; do
-    read -p "Please enter the domain name: " DOMAIN
-done
+if [ -z "$DOMAIN" ]; then
+    DOMAIN=""
+    while [[ -z "$DOMAIN" ]]; do
+        read -p "Please enter the domain name: " DOMAIN
+    done
+else
+    NEW_DOMAIN=""
+    while [[ -z "$NEW_DOMAIN" ]]; do
+        read -p "Please enter the domain name [${DOMAIN}]: " NEW_DOMAIN
+        if [ "$NEW_DOMAIN" == "" ]; then
+            NEW_DOMAIN="${DOMAIN}"
+        fi
+    done
+    DOMAIN="${NEW_DOMAIN}"
+fi
 
-ip_correct=""
-while [[ ! $ip_correct =~ ^(y|n)$ ]]; do
-    read -p "Is $EXTERNAL_IP your external IPv4 address? (y/n): " ip_correct
-done
+if [ -z "$EXTERNAL_IP" ]; then
+    CURRENT_EXTERNAL_IP=$(curl -s http://whatismyip.akamai.com)
 
-if [ ! "$ip_correct" == "y" ]
-then
+    ask_question "Is $CURRENT_EXTERNAL_IP your external IPv4 address? (y/n)" false "y"
+    ip_correct=$return_value
+
+    if [ "$ip_correct" == "y" ]; then
+        EXTERNAL_IP=$CURRENT_EXTERNAL_IP
+    fi
+else
+    ask_question "Is $EXTERNAL_IP still your external IPv4 address? (y/n)" true "y"
+    ip_correct=$return_value
+fi
+
+if [ ! "$ip_correct" == "y" ]; then
     EXTERNAL_IP=""
     while [[ ! $EXTERNAL_IP =~ ^[1-9][0-9]{0,2}\.[1-9][0-9]{0,2}\.[1-9][0-9]{0,2}\.[1-9][0-9]{0,2}$ ]]; do
         read -p "Please enter correct IPv4 address: " EXTERNAL_IP
@@ -58,39 +95,99 @@ then
 fi
 
 
-
 # write settings
+echo "--------------------------------------------------"
+echo "Setup environment..."
 cp sample.env .env
-sed -i "s/EXTERNAL_IP=.*/EXTERNAL_IP=$EXTERNAL_IP/" .env
-sed -i "s/DOMAIN=.*/DOMAIN=$DOMAIN/" .env
+sed -i '' -e "s/EXTERNAL_IP=.*/EXTERNAL_IP=$EXTERNAL_IP/" .env
+sed -i '' -e "s/DOMAIN=.*/DOMAIN=$DOMAIN/" .env
+
+cat conf/setup/docker-compose.init.yml > docker-compose.override.yml
 
 if [ ! "$greenlight" == "y" ]
 then
-    sed -i "s/ENABLE_GREENLIGHT.*/#ENABLE_GREENLIGHT=true/" .env
+    echo "Greenlight disabled"
+    sed -i '' -e "s/.*ENABLE_GREENLIGHT.*/#ENABLE_GREENLIGHT=true/" .env
+else
+    echo "Greenlight enabled"
+    sed -i '' -e "s/.*ENABLE_GREENLIGHT.*/ENABLE_GREENLIGHT=true/" .env
+    cat conf/setup/docker-compose.greenlight.yml >> docker-compose.override.yml
+fi
+
+if [ ! "$demo" == "y" ]
+then
+    echo "Demo disabled"
+    sed -i '' -e "s/.*ENABLE_DEMO.*/#ENABLE_DEMO=true/" .env
+else
+    echo "Demo enabled"
+    sed -i '' -e "s/.*ENABLE_DEMO.*/ENABLE_DEMO=true/" .env
+    cat conf/setup/docker-compose.demo.yml >> docker-compose.override.yml
+fi
+
+if [ ! "$webhooks" == "y" ]
+then
+    echo "WebHooks API disabled"
+    sed -i '' -e "s/.*ENABLE_WEBHOOKS.*/#ENABLE_WEBHOOKS=true/" .env
+else
+    echo "WebHooks API enabled"
+    sed -i '' -e "s/.*ENABLE_WEBHOOKS.*/ENABLE_WEBHOOKS=true/" .env
+    cat conf/setup/docker-compose.webhooks.yml >> docker-compose.override.yml
 fi
 
 if [ ! "$https_proxy" == "y" ]
 then
-    sed -i "s/ENABLE_HTTPS_PROXY.*/#ENABLE_HTTPS_PROXY=true/" .env
+    echo "HTTPS Proxy disabled"
+    sed -i '' -e "s/.*ENABLE_HTTPS_PROXY.*/#ENABLE_HTTPS_PROXY=true/" .env
+else
+    echo "HTTPS Proxy enabled"
+    sed -i '' -e "s/.*ENABLE_HTTPS_PROXY.*/ENABLE_HTTPS_PROXY=true/" .env
+    cat conf/setup/docker-compose.https.yml >> docker-compose.override.yml
 fi
 
 if [ "$coturn" == "y" ]
 then
-    sed -i "s/.*TURN_SERVER=.*/TURN_SERVER=turns:$DOMAIN:465?transport=tcp/" .env
-    TURN_SECRET=$(head /dev/urandom | tr -dc A-Za-f0-9 | head -c 32)
-    sed -i "s/.*TURN_SECRET=.*/TURN_SECRET=$TURN_SECRET/" .env
-    sed -i "s/.*STUN_IP=.*/STUN_IP=$EXTERNAL_IP/" .env
+    echo "coturn server enabled"
+    sed -i '' -e "s/.*ENABLE_COTURN.*/ENABLE_COTURN=true/" .env
+    sed -i '' -e "s/.*TURN_SERVER=.*/TURN_SERVER=turns:$DOMAIN:465?transport=tcp/" .env
+    if [ "$TURN_SECRET" == "" ]; then
+        echo "Generate new coturn secret"
+        TURN_SECRET=$(head /dev/urandom | LC_ALL=C tr -dc A-Za-f0-9 | head -c 32)
+    fi
+    sed -i '' -e "s/.*TURN_SECRET=.*/TURN_SECRET=$TURN_SECRET/" .env
+    sed -i '' -e "s/.*STUN_IP=.*/STUN_IP=$EXTERNAL_IP/" .env
+    cat conf/setup/docker-compose.coturn.yml >> docker-compose.override.yml
 else
-    sed -i "s/ENABLE_COTURN.*/#ENABLE_COTURN=true/" .env
+    echo "coturn server enabled"
+    sed -i '' -e "s/.*ENABLE_COTURN.*/#ENABLE_COTURN=true/" .env
+    sed -i '' -e "s/.*TURN_SERVER=.*/#TURN_SERVER=turns:turn.example.com:443?transport=tcp/" .env
+    sed -i '' -e "s/.*TURN_SECRET=.*/#TURN_SECRET=/" .env
+    sed -i '' -e "s/.*STUN_IP=.*/STUN_IP=216.93.246.18/" .env
+fi
+
+if [ "$https_proxy" == "y" ]
+then
+    cat conf/setup/docker-compose.ssldata-vol.yml >> docker-compose.override.yml
 fi
 
 # change secrets
-RANDOM_1=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 40)
-RANDOM_2=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 40)
-RANDOM_3=$(head /dev/urandom | tr -dc a-f0-9 | head -c 128)
-sed -i "s/SHARED_SECRET=.*/SHARED_SECRET=$RANDOM_1/" .env
-sed -i "s/ETHERPAD_API_KEY=.*/ETHERPAD_API_KEY=$RANDOM_2/" .env
-sed -i "s/RAILS_SECRET=.*/RAILS_SECRET=$RANDOM_3/" .env
+
+if [ "$SHARED_SECRET" == "" ]; then
+    echo "Generate new shared secret"
+    SHARED_SECRET=$(head /dev/urandom | LC_ALL=C tr -dc A-Za-z0-9 | head -c 40)
+fi
+sed -i '' -e "s/SHARED_SECRET=.*/SHARED_SECRET=$SHARED_SECRET/" .env
+
+if [ "$ETHERPAD_API_KEY" == "" ]; then
+    echo "Generate new Etherpad API key"
+    ETHERPAD_API_KEY=$(head /dev/urandom | LC_ALL=C tr -dc A-Za-z0-9 | head -c 40)
+fi
+sed -i '' -e "s/ETHERPAD_API_KEY=.*/ETHERPAD_API_KEY=$ETHERPAD_API_KEY/" .env
+
+if [ "$RAILS_SECRET" == "" ]; then
+    echo "Generate new rails secret"
+    RAILS_SECRET=$(head /dev/urandom | LC_ALL=C tr -dc a-f0-9 | head -c 128)
+fi
+sed -i '' -e "s/RAILS_SECRET=.*/RAILS_SECRET=$RAILS_SECRET/" .env
 
 echo "--------------------------------------------------"
 echo "configuration file .env got successfully created!"
@@ -99,4 +196,4 @@ echo "you can look through it for further adjusments"
 echo "  $ nano .env"
 echo ""
 echo "to start bigbluebutton run"
-echo "  $ ./scripts/compose up -d"
+echo "  $ docker-compose up -d"

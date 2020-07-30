@@ -1,5 +1,3 @@
-version: '3.6'
-services:
   coturn:
     image: instrumentisto/coturn:4.5
     restart: unless-stopped
@@ -11,7 +9,3 @@ services:
       - ./mod/coturn/entrypoint.sh:/usr/local/bin/docker-entrypoint.sh
       - ./mod/coturn/turnserver.conf:/etc/coturn/turnserver.conf
     network_mode: host
-
-volumes:
-  ssl_data:
-    name: ssl_data
