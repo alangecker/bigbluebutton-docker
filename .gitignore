@@ -1,3 +1,5 @@
 .env
+.env_backup
+.project
 postgres-data
 docker-compose.override.yml
