@@ -6,6 +6,7 @@
 - TURN server included
 - Fully automated HTTPS certificates
 - Runs on almost any major linux distributon (Debian, Ubuntu, CentOS,...)
+- Full IPv6 support
 
 ## Install
 1. Install docker-ce & docker-compose
@@ -38,6 +39,7 @@
 ## How-To's
 - [Upgrade](docs/upgrading.md)
 - [Behind NAT](docs/behind-nat.md)
+- [BBB-Docker Development](docs/development.md)
 - [Integration into an existing web server](docs/existing-web-server.md)
 
 ## Special thanks to
