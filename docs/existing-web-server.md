@@ -16,7 +16,7 @@ Eventually, BigBlueButton should be publicly accessible on `https://bbb.example.
 
 ## Integration with nginx
 
-1. Make sure that the following Apache modules are in use: `http_ssl`.
+1. Make sure that the following Nginx modules are in use: `http_ssl`.
 
 2. Add the following directives to the https virtual host bbb.example.com:
 
