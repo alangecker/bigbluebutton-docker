@@ -72,14 +72,15 @@ Eventually, BigBlueButton should be publicly accessible on `https://bbb.example.
 	  error_log   /var/log/nginx/bigbluebutton/bigbluebutton_error.log;
 	
 	  location / {
-	    # WebSocket support
+       # WebSocket support
 	    proxy_http_version 1.1;
 	    proxy_set_header Upgrade $http_upgrade;
-	    proxy_set_header Connection "upgrade";
-	#    proxy_set_header Connection "";
-	
+	    proxy_set_header Connection "Upgrade";
 	    proxy_set_header Host $http_host;
 	    proxy_set_header X-Real-IP $remote_addr;
+	    proxy_set_header X-Forwarded-Ssl on;
+	    proxy_set_header X-Forwarded-Host $host:$server_port;
+	    proxy_set_header X-Forwarded-Server $host;
 	    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 	    proxy_set_header X-Forwarded-Proto $scheme;
 	    proxy_set_header X-Frame-Options SAMEORIGIN;
@@ -91,7 +92,7 @@ Eventually, BigBlueButton should be publicly accessible on `https://bbb.example.
 	    proxy_cache_min_uses 2;
 	    proxy_cache_use_stale timeout;
 	    proxy_cache_lock on;
-	    client_max_body_size 50M;
+	    client_max_body_size 150M;
 	    proxy_pass http://bigbluebutton-backend;
 	  }
 	}
