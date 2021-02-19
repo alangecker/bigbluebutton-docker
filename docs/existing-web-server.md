@@ -16,9 +16,30 @@ Eventually, BigBlueButton should be publicly accessible on `https://bbb.example.
 
 ## Integration with nginx
 
-1. Make sure that the following Nginx modules are in use: `http_ssl`.
+1. Do not enable automatic HTTPS proxy during initial installation
 
-2. Add the following directives to the https virtual host bbb.example.com:
+    Answer `No` when `./script/setup` asks whether `Should an automatic HTTPS Proxy be included?`.
+    Alternatively edit `.env` and set `ENABLE_HTTPS_PROXY` to false.
+
+2. Make sure that the following Nginx modules are in use: `http_ssl`.
+
+3. Obtain SSL certificate from <https://letsencrypt.org> in this example
+
+    ```
+    certbot certonly -d bigbluebutton.example.com -d bbb.example.com --email "sysop@example.com"
+    ```
+    Check for `cert.pem`, `chain.pem`, `fullchain.pem` and `privkey.pem` (by default) in /etc/letsencrypt/live/bigbluebutton.example.com directory.
+
+4. include site-enabled in `nginx.conf`
+
+    Add/enable line `include /etc/nginx/sites-enabled/*;` in your `http` section in `/etc/nginx/conf/nginx.conf`
+
+5. Create nginx `bbb.example.com` virtual host:
+
+    - set proxy to docker `127.0.0.1:8080`
+    - explicitly redirect (301) all request towards `http://bbb.example.com` to `https://bbb.example.com`.
+
+    Create/edit `/etc/nginx/site-available/bbb_example_com-ssl.conf`
 
    (Configuration snippet from `CentOS Stream release 8` / `nginx/1.14.1`)
 
@@ -88,6 +109,25 @@ Eventually, BigBlueButton should be publicly accessible on `https://bbb.example.
 	  }
 	}
 	```
+
+6. Make sure logging directory exists and is writable by nginx
+
+    ```shell
+    mkdir /var/log/nginx/bigbluebutton && chown nginx:root /var/log/nginx/bigbluebutton
+    ```
+
+7. Enable nginx site
+
+    ```shell
+    ln -s /etc/nginx/conf/site-available/bbb_example_com-ssl.conf /etc/nginx/conf/site-enabled/
+    ```
+
+8. Nginx config files syntax check
+
+    ```shell
+    nginx -t
+    ```
+
 
 Apply changes:
 
