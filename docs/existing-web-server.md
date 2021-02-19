@@ -28,7 +28,7 @@ Eventually, BigBlueButton should be publicly accessible on `https://bbb.example.
     ```
     certbot certonly -d bigbluebutton.example.com -d bbb.example.com --email "sysop@example.com"
     ```
-    Check for `cert.pem`, `chain.pem`, `fullchain.pem` and `privkey.pem` (by default) in /etc/letsencrypt/live/bigbluebutton.example.com directory.
+    Check for `cert.pem`, `chain.pem`, `fullchain.pem` and `privkey.pem` (by default) in `/etc/letsencrypt/live/bigbluebutton.example.com directory`.
 
 4. include site-enabled in `nginx.conf`
 
