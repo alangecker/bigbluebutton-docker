@@ -39,7 +39,7 @@ Eventually, BigBlueButton should be publicly accessible on `https://bbb.example.
     - set proxy to docker `127.0.0.1:8080`
     - explicitly redirect (301) all request towards `http://bbb.example.com` to `https://bbb.example.com`.
 
-    Create/edit `/etc/nginx/site-available/bbb_example_com-ssl.conf`
+    Create/edit `/etc/nginx/sites-available/bbb_example_com-ssl.conf`
 
    (Configuration snippet from `CentOS Stream release 8` / `nginx/1.14.1`)
 
@@ -119,7 +119,7 @@ Eventually, BigBlueButton should be publicly accessible on `https://bbb.example.
 7. Enable nginx site
 
     ```shell
-    ln -s /etc/nginx/conf/site-available/bbb_example_com-ssl.conf /etc/nginx/conf/site-enabled/
+    ln -s /etc/nginx/sites-available/bbb_example_com-ssl.conf /etc/nginx/sites-enabled/
     ```
 
 8. Nginx config files syntax check
