@@ -28,10 +28,6 @@ Eventually, BigBlueButton should be publicly accessible on `https://bbb.example.
 	   keepalive 32;
 	}
 	
-	# Cache location must be present and writable
-	proxy_cache_path /var/cache/nginx-bigbluebutton levels=1:2 keys_zone=bigbluebutton_cache:10m max_size=3g inactive=120m use_temp_path=off;
-	
-	
 	## Redirects all HTTP traffic to the HTTPS host
 	server {
 	  listen 0.0.0.0:80;
@@ -87,11 +83,6 @@ Eventually, BigBlueButton should be publicly accessible on `https://bbb.example.
 	    proxy_buffers 256 16k;
 	    proxy_buffer_size 16k;
 	    proxy_read_timeout 600s;
-	    proxy_cache bigbluebutton_cache;
-	    proxy_cache_revalidate on;
-	    proxy_cache_min_uses 2;
-	    proxy_cache_use_stale timeout;
-	    proxy_cache_lock on;
 	    client_max_body_size 150M;
 	    proxy_pass http://bigbluebutton-backend;
 	  }
